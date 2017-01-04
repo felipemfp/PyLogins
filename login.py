@@ -1,62 +1,51 @@
-# coding: utf-8
+#!/usr/bin/env python
 import time
 import base64
 import argparse
 import getpass
+import os.path
 
-def check(pasw):
-	sen = getpass.getpass("password again: ")
-	while pasw != sen:
-		print("Passwords do not match, try again")
-		sen = getpass.getpass("password: ")
-	return pasw
+FILENAME = 'logins.dat'
 
-def Hides(login):
-	arqui = open("logins.txt", "a")
-	codi = base64.b64encode(login.encode("utf-8", 'replace'))
-	codi = str(codi)
-	arqui.write(codi + "\n")
-	arqui.close()
-	print("Saved successfully")
 
-def mold(usr, pasw):
-	login = ("Email: {e} | Senha: {s}".format(e = usr, s = pasw))
-	Hides(login)
+def listAccounts():
+    with open(FILENAME, 'rb') as store_file:
+        store_line = store_file.readline()
+        while store_line != b'':
+            user, password = base64.b64decode(
+                store_line).decode('utf8').split(',')
+            print('User: {}\t Password: {}'.format(user, password))
+            store_line = store_file.readline()
 
-def show():
-	arqui = open("logins.txt", "r")
-	log = "logins"
-	while log != "":
-		log = str(arqui.readline())
-		log = log[1:]
-		decodi = base64.b64decode(log)
-		print(decodi)
-	arqui.close()
 
-def args():
-	log = argparse.ArgumentParser(description = 'Email e senha de um cadastro.')
-	log.add_argument("--e", action = "store", dest = "opc",
-		               required = False,
-		               help = "Enter argument and 'yes' to save logins")
-	log.add_argument("--s", action = "store", dest = "escolha",
-		               required = False,
-		               help = "Enter the argument and 'yes' to view logins")
+def storeAccount(email, password):
+    with open(FILENAME, 'ab') as store_file:
+        store_line = '{},{}'.format(email, password)
+        store_line = base64.b64encode(store_line.encode('utf8'))
+        store_file.write(store_line)
+        store_file.write(b'\n')
 
-	data = log.parse_args()
-	if data.opc == "yes":
-		usr = input("Email: ")
-		pasw = getpass.getpass("password: ")
-		mold(usr, check(pasw))
-	elif data.escolha == "yes":
-		show()
 
 def main():
-	try:
-		open("logins.txt", "r")
-	except IOError:
-		print("File not found\n*Creating file*")
-		time.sleep(5)
-		arqui = open("logins.txt", "w")
-	args()
+    log = argparse.ArgumentParser(description='Storing accounts.')
+    log.add_argument("-s", '--store', action="store_true", dest="store",
+                     help="save account")
+    log.add_argument("-l", '--list', action="store_true", dest="list",
+                     help="list saved accounts")
+
+    args = log.parse_args()
+    if args.store:
+        user = input('Email or username: ')
+        password = getpass.getpass('Password: ')
+        while password != getpass.getpass('Password (again): '):
+            print('Sorry, try again')
+            pass
+        storeAccount(user, password)
+    if args.list:
+        listAccounts()
+
+
 if __name__ == '__main__':
-	main()
+    if not os.path.isfile(FILENAME):
+        open(FILENAME, 'wb')
+    main()
