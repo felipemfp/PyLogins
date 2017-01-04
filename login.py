@@ -37,14 +37,38 @@ def show_account(application, user):
     global accounts
     for account in accounts:
         if account[0] == application and account[1] == user:
+            print(tabulate([account[0:2], ],
+                           headers=('Application', 'User'), tablefmt="grid"))
+
+
+def show_account_password(application, user):
+    global accounts
+    for account in accounts:
+        if account[0] == application and account[1] == user:
             input('{}\r'.format(account[2]))
 
 
-def store_account(secret, application, email, password):
-    with open(FILENAME, 'a') as store_file:
-        store_line = '{},{},{}'.format(application, email, password)
-        store_line = encipher(store_line, secret)
-        store_file.write('{}\n'.format(store_line))
+def delete_account(application, user):
+    global accounts
+    accountToDelete = []
+    for account in accounts:
+        if account[0] == application and account[1] == user:
+            accountToDelete = account
+    accounts.remove(accountToDelete)
+
+
+def store_account(application, user, password):
+    global accounts
+    accounts += [[application, user, password]]
+
+
+def store_accounts(secret):
+    global accounts
+    with open(FILENAME, 'w') as store_file:
+        for account in accounts:
+            store_line = '{},{},{}'.format(*account)
+            store_line = encipher(store_line, secret)
+            store_file.write('{}\n'.format(store_line))
 
 
 def main():
@@ -57,7 +81,9 @@ def main():
                      help='select app\'s account')
     log.add_argument('-u', '--user', action="store", dest='user',
                      help='select user\'s password')
-    
+    log.add_argument('-D', '--DELETE', action="store_true", dest='delete',
+                    help='delete account')
+
     args = log.parse_args()
     secret = getpass.getpass('Provide your secret, please: ')
     load_accounts(secret)
@@ -69,14 +95,21 @@ def main():
         while password != getpass.getpass('Password (again): '):
             print('Sorry, try again')
             pass
-        store_account(secret, application, user, password)
+        store_account(application, user, password)
     elif args.list:
         print('\nThese are your saved accounts:\n')
         list_accounts()
         print('\nTo see a password: -a application -u user')
     elif args.user and args.application:
-        print('You can see you password below (note you should erase it)')
-        show_account(args.application, args.user)
+        if args.delete:
+            print('\nWould you like to delete the following account?')
+            show_account(args.application, args.user)
+            if input('Yes or no? ').lower() == 'yes':
+                delete_account(args.application, args.user)
+        else:
+            print('\nYou can see you password below (note you should erase it)')
+            show_account_password(args.application, args.user)
+    store_accounts(secret)
 
 
 if __name__ == '__main__':
