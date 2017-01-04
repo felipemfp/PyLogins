@@ -1,29 +1,37 @@
 #!/usr/bin/env python
 import time
-import base64
 import argparse
 import getpass
 import os.path
+from hashids import Hashids
 
 FILENAME = 'logins.dat'
 
 
-def listAccounts():
-    with open(FILENAME, 'rb') as store_file:
+def encipher(text, secret):
+    return Hashids(salt=secret).encode(*(int(c) for c in text.encode('utf8')))
+
+
+def decipher(cipher, secret):
+    return bytes(Hashids(salt=secret).decode(cipher)).decode('utf8')
+
+
+def list_accounts(secret):
+    with open(FILENAME, 'r') as store_file:
         store_line = store_file.readline()
-        while store_line != b'':
-            user, password = base64.b64decode(
-                store_line).decode('utf8').split(',')
-            print('User: {}\t Password: {}'.format(user, password))
+        while store_line != '':
+            stored = decipher(store_line[:-1], secret)
+            if stored != '':
+                user, password = stored.split(',')
+                print('User: {}\t Password: {}'.format(user, password))
             store_line = store_file.readline()
 
 
-def storeAccount(email, password):
-    with open(FILENAME, 'ab') as store_file:
+def store_account(secret, email, password):
+    with open(FILENAME, 'a') as store_file:
         store_line = '{},{}'.format(email, password)
-        store_line = base64.b64encode(store_line.encode('utf8'))
-        store_file.write(store_line)
-        store_file.write(b'\n')
+        store_line = encipher(store_line, secret)
+        store_file.write('{}\n'.format(store_line))
 
 
 def main():
@@ -34,15 +42,16 @@ def main():
                      help="list saved accounts")
 
     args = log.parse_args()
+    secret = getpass.getpass('Secret: ')
     if args.store:
         user = input('Email or username: ')
         password = getpass.getpass('Password: ')
         while password != getpass.getpass('Password (again): '):
             print('Sorry, try again')
             pass
-        storeAccount(user, password)
+        store_account(secret, user, password)
     if args.list:
-        listAccounts()
+        list_accounts(secret)
 
 
 if __name__ == '__main__':
