@@ -62,6 +62,10 @@ def delete_account(application, user):
 
 def store_account(application, user, password):
     global accounts
+    for account in accounts:
+        if account[0] == application and account[1] == user:
+            account[2] = password
+            return
     accounts += [[application, user, password]]
 
 
@@ -86,6 +90,8 @@ def main():
                      help='select app\'s account')
     log.add_argument('-u', '--user', action="store", dest='user',
                      help='select user\'s password')
+    log.add_argument('-e', '--edit', action='store_true', dest='edit',
+                     help='edit password')
     log.add_argument('-D', '--DELETE', action="store_true", dest='delete',
                     help='delete account')
 
@@ -111,6 +117,15 @@ def main():
             show_account(args.application, args.user)
             if input('Yes or no? ').lower() == 'yes':
                 delete_account(args.application, args.user)
+        elif args.edit:
+            print('\nWould you like to edit the following account?')
+            show_account(args.application, args.user)
+            if input('Yes or no? ').lower() == 'yes':
+                password = getpass.getpass('Password: ')
+                while password != getpass.getpass('Password (again): '):
+                    print('Sorry, try again')
+                    pass
+                store_account(args.application, args.user, password)
         else:
             print('\nYou can see you password below (note you should erase it)')
             show_account_password(args.application, args.user)
