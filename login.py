@@ -8,6 +8,7 @@ from tabulate import tabulate
 
 FILENAME = 'logins.dat'
 accounts = []
+another_accounts = []
 
 
 def encipher(text, secret):
@@ -19,12 +20,14 @@ def decipher(cipher, secret):
 
 
 def load_accounts(secret):
-    global accounts
+    global accounts, another_accounts
     with open(FILENAME, 'r') as store_file:
         for store_line in store_file:
             stored = decipher(store_line[:-1], secret)
             if stored != '':
                 accounts += [stored.split(',')]
+            else:
+                another_accounts += [store_line]
 
 
 def list_accounts():
@@ -69,6 +72,8 @@ def store_accounts(secret):
             store_line = '{},{},{}'.format(*account)
             store_line = encipher(store_line, secret)
             store_file.write('{}\n'.format(store_line))
+        for another_account in another_accounts:
+            store_file.write(another_account)
 
 
 def main():
