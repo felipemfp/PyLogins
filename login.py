@@ -4,8 +4,10 @@ import argparse
 import getpass
 import os.path
 from hashids import Hashids
+from tabulate import tabulate
 
 FILENAME = 'logins.dat'
+accounts = []
 
 
 def encipher(text, secret):
@@ -16,20 +18,31 @@ def decipher(cipher, secret):
     return bytes(Hashids(salt=secret).decode(cipher)).decode('utf8')
 
 
-def list_accounts(secret):
+def load_accounts(secret):
+    global accounts
     with open(FILENAME, 'r') as store_file:
-        store_line = store_file.readline()
-        while store_line != '':
+        for store_line in store_file:
             stored = decipher(store_line[:-1], secret)
             if stored != '':
-                user, password = stored.split(',')
-                print('User: {}\t Password: {}'.format(user, password))
-            store_line = store_file.readline()
+                accounts += [stored.split(',')]
 
 
-def store_account(secret, email, password):
+def list_accounts():
+    global accounts
+    print(tabulate([account[0:2] for account in accounts],
+                   headers=('Application', 'User'), tablefmt="grid"))
+
+
+def show_account(application, user):
+    global accounts
+    for account in accounts:
+        if account[0] == application and account[1] == user:
+            input('{}\r'.format(account[2]))
+
+
+def store_account(secret, application, email, password):
     with open(FILENAME, 'a') as store_file:
-        store_line = '{},{}'.format(email, password)
+        store_line = '{},{},{}'.format(application, email, password)
         store_line = encipher(store_line, secret)
         store_file.write('{}\n'.format(store_line))
 
@@ -40,18 +53,30 @@ def main():
                      help="save account")
     log.add_argument("-l", '--list', action="store_true", dest="list",
                      help="list saved accounts")
-
+    log.add_argument('-a', '--application', action="store", dest='application',
+                     help='select app\'s account')
+    log.add_argument('-u', '--user', action="store", dest='user',
+                     help='select user\'s password')
+    
     args = log.parse_args()
-    secret = getpass.getpass('Secret: ')
+    secret = getpass.getpass('Provide your secret, please: ')
+    load_accounts(secret)
     if args.store:
+        print('\nAdd a new account\n')
+        application = input('Application: ')
         user = input('Email or username: ')
         password = getpass.getpass('Password: ')
         while password != getpass.getpass('Password (again): '):
             print('Sorry, try again')
             pass
-        store_account(secret, user, password)
-    if args.list:
-        list_accounts(secret)
+        store_account(secret, application, user, password)
+    elif args.list:
+        print('\nThese are your saved accounts:\n')
+        list_accounts()
+        print('\nTo see a password: -a application -u user')
+    elif args.user and args.application:
+        print('You can see you password below (note you should erase it)')
+        show_account(args.application, args.user)
 
 
 if __name__ == '__main__':
